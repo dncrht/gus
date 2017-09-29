@@ -1,0 +1,5 @@
+= gus
+
+Generate this with
+    gus rdoc
+After you have described your command line interface

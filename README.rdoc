@@ -1,0 +1,6 @@
+= gus
+
+Describe your project here
+
+:include:gus.rdoc
+

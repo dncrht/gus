@@ -1,0 +1,25 @@
+PATH
+  remote: .
+  specs:
+    gus (0.0.1)
+      gli (= 2.16.1)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    byebug (9.0.6)
+    gli (2.16.1)
+    rake (12.1.0)
+    rdoc (5.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  byebug
+  gus!
+  rake
+  rdoc
+
+BUNDLED WITH
+   1.15.4

@@ -1,0 +1,188 @@
+#!/usr/bin/env ruby
+require 'gli'
+begin # XXX: Remove this begin/rescue before distributing your app
+require 'gus'
+rescue LoadError
+  STDERR.puts "In development, you need to use `bundle exec bin/gus` to run your app"
+  STDERR.puts "At install-time, RubyGems will make sure lib, etc. are in the load path"
+  STDERR.puts "Feel free to remove this message from bin/gus now"
+  exit 64
+end
+
+include GLI::App
+
+class Config
+  CONFIG_FILE = "#{Dir.home}/.gus"
+  def read_config
+    unless File.exist? CONFIG_FILE
+      write_config([])
+      return []
+    end
+
+    config = YAML.load(File.open(CONFIG_FILE))
+    unless config.is_a? Array
+      config = []
+    end
+
+    config
+  end
+
+  def write_config(config)
+    f = File.open(CONFIG_FILE, 'w')
+    f.write YAML.dump(config)
+    f.close
+  end
+
+  def add(name, email)
+    config = read_config
+    config << {name: name, email: email}
+    write_config(config)
+    config.size
+  end
+
+  def drop(index)
+    config = read_config
+    entry = config.delete_at(index.to_i - 1)
+    write_config(config)
+    entry
+  end
+
+  def select(index)
+    entry = read_config[index.to_i - 1]
+    name = entry[:name]
+    email = entry[:email]
+    `git config --global user.name '#{name}'`
+    `git config --global user.email #{email}`
+    [name, email]
+  end
+
+  def check
+    current_name = `git config user.name`.strip
+    current_email = `git config user.email`.strip
+
+    config = read_config
+    name_present = config.detect { |user| user['name'] == current_name }
+    email_present = config.detect { |user| user['email'] == current_email }
+
+    if !name_present && !email_present
+      puts "Current name and email are not available on the configuration.\nFix it with `gus add '#{current_name}' #{current_email}` command"
+    elsif !name_present
+      puts "Current name is not available on the configuration.\nFix it with `gus add '#{current_name}' some@email.com` command"
+    elsif !email_present
+      puts "Current email is not available on the configuration.\nFix it with `gus add 'Some Name' #{current_email}` command"
+    end
+  end
+
+  def print(config)
+    config.each_with_index do |user, i|
+      puts "User #{i + 1})\tName: #{user[:name]}"
+      puts "\tEmail: #{user[:email]}\n"
+    end
+  end
+end
+
+program_desc 'Describe your application here'
+
+version Gus::VERSION
+
+subcommand_option_handling :normal
+arguments :strict
+
+desc 'Describe some switch here'
+switch [:s,:switch]
+
+desc 'Describe some flag here'
+default_value 'the default'
+arg_name 'The name of the argument'
+flag [:f,:flagname]
+
+desc 'Describe add here'
+arg_name 'Describe arguments to add here'
+command :add do |c|
+  c.desc 'Describe a switch to add'
+  c.switch :s
+
+  c.desc 'Describe a flag to add'
+  c.default_value 'default'
+  c.flag :f
+  c.action do |global_options,options,args|
+
+    name = args[0]
+    email = args[1]
+    config = Config.new
+    index = config.add name, email
+
+    puts "Added name #{name} with email #{email} as #{index})"
+  end
+end
+
+desc 'Describe list here'
+arg_name 'Describe arguments to list here'
+command :list do |c|
+  c.action do |global_options,options,args|
+
+    config = Config.new
+    config.print config.read_config
+
+  end
+end
+
+desc 'Describe select here'
+arg_name 'Describe arguments to select here'
+command :select do |c|
+  c.action do |global_options,options,args|
+
+    index = args[0]
+    config = Config.new
+    name, email = config.select index
+
+    puts "Selected entry #{index}: #{name} with email #{email}"
+  end
+end
+
+desc 'Describe check here'
+arg_name 'Describe arguments to check here'
+command :check do |c|
+  c.action do |global_options,options,args|
+
+    config = Config.new
+    config.check
+
+  end
+end
+
+desc 'Describe drop here'
+arg_name 'Describe arguments to drop here'
+command :drop do |c|
+  c.action do |global_options,options,args|
+
+    index = args[0]
+    config = Config.new
+    entry = config.drop index
+
+    puts "Dropped entry #{index}: #{entry[:name]} with email #{entry[:email]}"
+  end
+end
+
+pre do |global,command,options,args|
+  # Pre logic here
+  # Return true to proceed; false to abort and not call the
+  # chosen command
+  # Use skips_pre before a command to skip this block
+  # on that command only
+  true
+end
+
+post do |global,command,options,args|
+  # Post logic here
+  # Use skips_post before a command to skip this
+  # block on that command only
+end
+
+on_error do |exception|
+  # Error logic here
+  # return false to skip default error handling
+  true
+end
+
+exit run(ARGV)
